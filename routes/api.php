@@ -66,13 +66,13 @@ Route::get('/course-pdf/{filename}', function (Request $request, $filename) {
 //--------------- for admin --------------------------------------------------------------------------------------------
 Route::middleware(['auth:sanctum', IsAdmin::class])->group(
     function () {
-        Route::get('/dashboard-data',action: function(){
-                $nb_user = User::where('role','user')->count();
-                $todayEvents = Event::whereDate('date', '2025-04-30')->get();
-                return response()->json([
-                    'totalUsers'=>$nb_user,
-                    'events' => $todayEvents,
-                ]);
+        Route::get('/dashboard-data', action: function () {
+            $nb_user = User::where('role', 'user')->count();
+            $todayEvents = Event::whereDate('date', Carbon::today('africa/casablanca')->format('Y-m-d'))->get();
+            return response()->json([
+                'totalUsers' => $nb_user,
+                'events' => $todayEvents,
+            ]);
         });
 
         //----------------------------------------Events------------------------------------------------------------------

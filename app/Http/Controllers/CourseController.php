@@ -4,12 +4,17 @@ namespace App\Http\Controllers;
 
 use App\Models\Course;
 use App\Models\Module;
+use App\Services\SupabaseStorage;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
 class CourseController extends Controller
 {
+    protected $supabaseStorage;
+    public function __construct()
+    {
+        $this->supabaseStorage =  new SupabaseStorage(env('SUPABASE_BUCKET_COURSES'));
+    }
     public function modules()
     {
         $modules = Module::all();
@@ -42,11 +47,12 @@ class CourseController extends Controller
         }
 
         if ($request->hasFile('course_pdf')) {
-            $path = $request->file('course_pdf')->store('Courses', 'public');
-            $data['course_pdf'] = $path;
+
+            $filepath = $this->supabaseStorage->upload($request->file('course_pdf'));
+            $data['course_pdf'] = $filepath;
         }
         $course = Course::create($data);
-        //jib l module li relationnell m3a had cours jdjd
+        //jib l module li relationnell m3a had cours jdid
         $course->load('module');
 
         return response()->json([
@@ -56,10 +62,7 @@ class CourseController extends Controller
     }
 
 
-   
 
-    
-       
 
 
     public function destroy($id)
@@ -67,21 +70,26 @@ class CourseController extends Controller
 
         $cours = Course::find($id);
 
+
         if (!$cours) {
             return response()->json([
                 'success' => false,
                 'message' => 'Cours introuvable.'
-            ], 404);
+            ], 422);
         }
-        if (Storage::disk('public')->exists($cours->course_pdf)) {
-            Storage::disk('public')->delete($cours->course_pdf);
+
+
+
+        if ($this->supabaseStorage->exists(trim($cours['course_pdf'], '/'))) {
+            $this->supabaseStorage->delete($cours['course_pdf']);
         }
+
         $cours->delete();
 
         return response()->json([
             'success' => true,
             'cours' => $cours,
-            'message' => 'Cours supprimé avec succès.'
+            'message' => 'Cours supprimé avec succès.',
         ], 200);
     }
 }

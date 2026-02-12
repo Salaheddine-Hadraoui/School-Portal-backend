@@ -1,0 +1,7 @@
+{
+    "name": "ista-ntic-bm-backend",
+    "scripts": {
+        "dev": "php artisan serve",
+        "build": "echo 'Laravel build placeholder'"
+    }
+}

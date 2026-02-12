@@ -3,15 +3,19 @@
 namespace App\Http\Controllers;
 
 use App\Models\Event;
+use App\Services\SupabaseStorage;
 use Carbon\Carbon;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
 class EventsController extends Controller
 {
+    protected $supabaseStorage;
+    public function __construct()
+    {
+        $this->supabaseStorage =  new SupabaseStorage(env('SUPABASE_BUCKET_EVENTS'));
+    }
     /**
      * Display a listing of the resource.
      */
@@ -27,19 +31,13 @@ class EventsController extends Controller
     }
     public function index_latest()
     {
-        $events = Event::all()->where('date','=',now());
+        $events = Event::all()->where('date', '=', Carbon::now());
+
         return response()->json([
-            'latestevents' => $events
+            'latestevents' => $events,
         ], 200);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
-    {
-        //
-    }
 
     /**
      * Store a newly created resource in storage.
@@ -64,12 +62,13 @@ class EventsController extends Controller
                 'errors' => $eror->errors()
             ], status: 200);
         }
+
+
         if ($request->hasFile('image')) {
 
-            $path =  $request->file('image')->store('Events', 'public');
-            // n7too l path dial image f image column f events table
-            $data['image'] = $path;
-        };
+            $filepath = $this->supabaseStorage->upload($request->file('image'));
+            $data['image'] = $filepath;
+        }
 
         $event = Event::create($data);
 
@@ -112,17 +111,6 @@ class EventsController extends Controller
         );
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(string $id)
-    {
-        //
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
     public function update(Request $request, string $id)
     {
 
@@ -155,12 +143,15 @@ class EventsController extends Controller
         }
 
         // Handle image upload
+
         if ($request->hasFile('image')) {
-            if($event->image){
-                Storage::disk('public')->delete($event->image);
+
+            if ($this->supabaseStorage->exists($event['image'])) {
+                $this->supabaseStorage->delete($event['image']);
             }
-            $path = $request->file('image')->store('Events', 'public');
-            $data['image'] = $path;
+
+            $filepath = $this->supabaseStorage->upload($request->file('image'));
+            $data['image'] = $filepath;
         } else {
             $data['image'] = $event->image; // keep existing image
         }
@@ -174,13 +165,12 @@ class EventsController extends Controller
         ], 200);
     }
 
-    
+
     /**
      * Remove the specified resource from storage.
      */
     public function destroy($id)
     {
-
         $event = Event::find($id);
 
         if (!$event) {
